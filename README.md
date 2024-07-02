@@ -1,0 +1,72 @@
+# Tmux Kuzco Worker Script
+
+This script is designed to manage tmux sessions for running Kuzco workers. It allows for starting, stopping, and adding worker sessions easily through a command line interface.
+
+## Features
+
+- Starts tmux sessions with specified commands.
+- Supports two modes: fresh start and adding sessions.
+- Reads worker configuration from a local config file or environment variables.
+- Allows specifying the number of tmux sessions to start via a command line flag.
+
+## Requirements
+
+- `tmux` must be installed on your system.
+
+## Usage
+
+1. **Set Up Configuration**
+
+   Create a `config.env` file in the same directory as the script. This file should contain your worker ID and code. Here is an example of what the `config.env` file should look like:
+
+   \`\`\`bash
+
+   # config.env
+
+   WORKER_ID=your_worker_id
+   CODE=your_code
+   \`\`\`
+
+   Alternatively, you can set the `WORKER_ID` and `CODE` as environment variables.
+
+2. **Run the Script**
+
+   The script can be executed with different flags to control its behavior.
+
+   - `-m [fresh|add]`: Mode of operation. Use `fresh` to kill all existing tmux sessions and start new ones. Use `add` to detect running tmux sessions and add new ones.
+   - `-s [number]`: Number of tmux sessions to start.
+
+   Example usage:
+
+   \`\`\`bash
+
+   # Ensure the environment variables are set if not using config.env
+
+   export WORKER_ID="your_worker_id"
+   export CODE="your_code"
+
+   # Start 12 fresh tmux sessions
+
+   bash june14.sh -m fresh -s 12
+
+   # Add 5 tmux sessions to the existing ones
+
+   bash june14.sh -m add -s 5
+   \`\`\`
+
+## Script Details
+
+Here is a brief overview of what the script does:
+
+1. **Configuration Loading**: It first checks for a `config.env` file. If found, it loads the worker ID and code from this file. If not found, it looks for these values in the environment variables.
+2. **Command Definition**: The command to start a Kuzco worker is defined using the loaded configuration.
+3. **Mode Handling**: Depending on the `-m` flag, the script will either kill all existing tmux sessions (`fresh` mode) or add to the existing sessions (`add` mode).
+4. **Session Management**: The script starts the specified number of tmux sessions using the defined command.
+
+## License
+
+This project is open source and available under the [MIT License](LICENSE).
+
+## Contributions
+
+Contributions are welcome! Please open an issue or submit a pull request on GitHub.
