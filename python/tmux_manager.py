@@ -13,7 +13,7 @@ def start_session(session_name, command, log_file):
     full_command = f'{command} > {log_file} 2>&1'
     subprocess.run(['tmux', 'new-session', '-d', '-s', session_name, 'bash', '-c', full_command])
 
-def manage_sessions(config, mode='fresh', sessions=5, wait_time=5, retry_count=3, log_file='../worker.log'):
+def manage_sessions(config, mode='fresh', sessions=5, wait_time=5, retry_count=3):
     worker_command = f'kuzco worker start --worker {config["WORKER_ID"]} --code {config["CODE"]}'
 
     if mode == 'fresh':
@@ -29,6 +29,7 @@ def manage_sessions(config, mode='fresh', sessions=5, wait_time=5, retry_count=3
         start_index = len([s for s in os.listdir('../') if s.startswith('worker') and s.endswith('.log')]) + 1
 
     for i in range(start_index, start_index + sessions):
+        log_file = f'../worker{i}.log'
         success = False
         for _ in range(retry_count):
             if session_exists(f'worker{i}'):

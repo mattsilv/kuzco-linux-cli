@@ -13,9 +13,8 @@ def main():
     args = parser.parse_args()
 
     config = load_config('../config.env')
-    log_file = '../worker.log'
-    manage_sessions(config, args.mode, args.sessions, args.wait_time, args.retry_count, log_file)
-    monitor_logs(args.sessions, log_file)
+    manage_sessions(config, args.mode, args.sessions, args.wait_time, args.retry_count)
+    monitor_logs(args.sessions)
 
 if __name__ == "__main__":
     main()
