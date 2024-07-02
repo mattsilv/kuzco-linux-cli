@@ -37,6 +37,7 @@ count_existing_sessions() {
 # Fresh start
 if [ "$MODE" == "fresh" ]; then
   kill_tmux_sessions
+  echo "Stopped all existing tmux sessions."
   START_INDEX=1
 else
   START_INDEX=$(count_existing_sessions)
