@@ -30,7 +30,7 @@ cd kuzco-linux-cli
 nano config.env
 ```
 
-Paste in the contents below with your worker and code populated. hit CTRL-X, then ENTER to save the file in the nano editor.
+Paste in the contents below with your worker and code populated. hit CTRL-X, then Y, then ENTER to save the file in the nano editor.
 
 ```bash
 # config.env
