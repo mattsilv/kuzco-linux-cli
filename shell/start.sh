@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Load config from file if it exists
-CONFIG_FILE="config.env"
+CONFIG_FILE="../config.env"
 if [ -f "$CONFIG_FILE" ]; then
   source "$CONFIG_FILE"
 else
