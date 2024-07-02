@@ -58,10 +58,10 @@ Example usage:
 ```bash
 
 # Start 12 fresh tmux sessions
-bash june14.sh -m fresh -s 12
+bash start.sh -m fresh -s 12
 
 # Add 5 tmux sessions to the existing ones
-bash june14.sh -m add -s 5
+bash start.sh -m add -s 5
 ```
 
 ## Script Details
