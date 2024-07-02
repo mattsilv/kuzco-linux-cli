@@ -17,7 +17,20 @@ This script manages tmux sessions for running Kuzco workers. It allows for start
 
 ### 1. Set Up Configuration
 
+Clone this repo
+
+```bash
+git clone https://github.com/mattsilv/kuzco-linux-cli.git .
+```
+
 Create a `config.env` file in the same directory as the script. This file should contain your worker ID and code. Here's an example:
+
+```bash
+cd kuzco-linux-cli
+nano config.env
+```
+
+Paste in the contents below with your worker and code populated. hit CTRL-X, then ENTER to save the file in the nano editor.
 
 ```bash
 # config.env
@@ -26,6 +39,12 @@ CODE=your_code
 ```
 
 Alternatively, you can set the `WORKER_ID` and `CODE` as environment variables.
+
+```bash
+# If env variables are defined, script will ignore the config.env file.
+export WORKER_ID="your_worker_id"
+export CODE="your_code"
+```
 
 ### 2. Run the Script
 
@@ -37,9 +56,6 @@ The script can be executed with different flags to control its behavior:
 Example usage:
 
 ```bash
-# Ensure the environment variables are set if not using config.env
-export WORKER_ID="your_worker_id"
-export CODE="your_code"
 
 # Start 12 fresh tmux sessions
 bash june14.sh -m fresh -s 12
