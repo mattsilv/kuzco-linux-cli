@@ -1,6 +1,9 @@
 #!/bin/bash
 # Activate the virtual environment
-source ../myenv/bin/activate
+source ./myenv/bin/activate
+
+# Set the PYTHONPATH to include the python directory
+export PYTHONPATH=$(pwd)/python
 
 # Navigate to the python directory
 cd python
