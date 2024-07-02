@@ -12,11 +12,15 @@ else
   fi
 fi
 
+# Default wait time
+WAIT_TIME=5
+
 # Parse flags
-while getopts "m:s:" opt; do
+while getopts "m:s:w:" opt; do
   case $opt in
     m) MODE=$OPTARG ;;
     s) SESSIONS=$OPTARG ;;
+    w) WAIT_TIME=$OPTARG ;;
     \?) echo "Invalid option -$OPTARG" >&2; exit 1 ;;
   esac
 done
@@ -44,9 +48,11 @@ else
   START_INDEX=$((START_INDEX + 1))
 fi
 
-# Start tmux sessions
+# Start tmux sessions with a wait time
 for i in $(seq $START_INDEX $((START_INDEX + SESSIONS - 1))); do
   tmux new-session -d -s worker$i "$COMMAND"
+  echo "Started tmux session worker$i"
+  sleep $WAIT_TIME
 done
 
 echo "Started $SESSIONS kuzco workers in parallel tmux sessions."
