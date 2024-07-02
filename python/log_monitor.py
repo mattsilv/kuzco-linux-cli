@@ -1,6 +1,5 @@
 import os
 import time
-from collections import defaultdict
 
 def monitor_logs(sessions, log_file='../worker.log', max_init_time=30, productive_interval=30):
     logs = {f'worker{i}': {'last_heartbeat': 0, 'last_inference': 0, 'status': 'initializing', 'time_in_status': 0} for i in range(1, sessions + 1)}

@@ -10,7 +10,7 @@ def kill_session(session_name):
     subprocess.run(['tmux', 'kill-session', '-t', session_name])
 
 def start_session(session_name, command, log_file):
-    full_command = f'{command} > >(tee -a {log_file}) 2> >(tee -a {log_file} >&2)'
+    full_command = f'{command} > {log_file} 2>&1'
     subprocess.run(['tmux', 'new-session', '-d', '-s', session_name, 'bash', '-c', full_command])
 
 def manage_sessions(config, mode='fresh', sessions=5, wait_time=5, retry_count=3, log_file='../worker.log'):
@@ -35,8 +35,9 @@ def manage_sessions(config, mode='fresh', sessions=5, wait_time=5, retry_count=3
                 kill_session(f'worker{i}')
             start_session(f'worker{i}', worker_command, log_file)
             time.sleep(wait_time)
-            success = True
-            break
+            if session_exists(f'worker{i}'):
+                success = True
+                break
 
         if success:
             print(f"Started tmux session worker{i} and logging to {log_file}")
