@@ -52,11 +52,11 @@ def monitor_logs(sessions, config, show_loading=False, auto_restart=False, max_i
                     except IOError as e:
                         logger.error(f"Error reading log file {log_file}: {str(e)}")
                 else:
-                    if worker.status != 'loading':
+                    if worker.status != 'starting':
                         logger.warning(f"Log file not found: {log_file}")
                     
-                    if auto_restart and current_time - worker.last_init > max_init_time:
-                        restart_worker(log_file, "Worker stuck in loading state.")
+                    if auto_restart and worker.status == 'starting' and current_time - worker.last_init > max_init_time:
+                        restart_worker(log_file, "Worker stuck in starting state.")
 
             display_status(workers, elapsed_time)
             time.sleep(1)

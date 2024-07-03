@@ -9,25 +9,25 @@ def parse_log(worker, log_lines, current_time, productive_interval=30):
             if not worker.first_heartbeat:
                 worker.first_heartbeat = True
                 worker.start_time = current_time
-            if worker.status == 'initializing' and current_time - worker.start_time >= 20:
-                worker.update_status('unproductive', current_time)
+                worker.status = 'initializing'
         elif 'Inference finished' in line or 'Inference started' in line:
             worker.last_inference = current_time
             worker.last_productive = current_time
-            if worker.status != 'initializing':
-                worker.update_status('productive', current_time)
+            worker.status = 'productive'
         elif 'Initializing' in line:
             if worker.status != 'initializing':
-                worker.update_status('initializing', current_time)
+                worker.status = 'initializing'
                 worker.last_init = current_time
         elif 'SyntaxError' in line or 'Failed to handle inference subscription' in line:
             worker.error = line.strip()
-            worker.update_status('error', current_time)
+            worker.status = 'error'
             worker.critical_error = True
         elif 'Error:' in line or 'Failed to' in line:
             worker.error = line.strip()
-            worker.update_status('error', current_time)
+            worker.status = 'error'
 
-    # Update status based on last inference time
+    # Update status based on last productive time
     if worker.status == 'productive' and current_time - worker.last_productive > productive_interval:
-        worker.update_status('unproductive', current_time)
+        worker.status = 'unproductive'
+
+    worker.time_in_status = current_time - (worker.last_productive if worker.status == 'productive' else worker.last_init)
