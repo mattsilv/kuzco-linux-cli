@@ -1,6 +1,7 @@
 # File: main.py
 
 import argparse
+import logging
 from logger import main_logger as logger
 from config_loader import load_config
 from tmux_manager import manage_sessions
@@ -17,7 +18,9 @@ def main():
     args = parser.parse_args()
 
     if args.verbose:
-        logger.setLevel(logger.DEBUG)
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
 
     try:
         logger.info(f"Starting Kuzco Tmux Worker Manager in {args.mode} mode")
