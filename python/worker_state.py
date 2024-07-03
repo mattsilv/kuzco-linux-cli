@@ -8,7 +8,7 @@ class Worker:
         self.last_heartbeat = 0
         self.last_inference = 0
         self.last_init = time.time()
-        self.status = 'loading' if show_loading else 'initializing'
+        self.status = 'starting'  # Changed from 'loading' or 'initializing'
         self.time_in_status = 0
         self.error = None
         self.start_time = None
@@ -20,7 +20,7 @@ class Worker:
     def restart(self):
         self.last_init = time.time()
         self.time_in_status = 0
-        self.status = 'initializing'
+        self.status = 'starting'  # Changed from 'initializing'
         self.error = None
         self.critical_error = False
         self.last_inference = 0

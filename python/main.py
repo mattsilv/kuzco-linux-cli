@@ -2,6 +2,8 @@
 
 import argparse
 import logging
+import threading
+import time
 from logger import main_logger, config_logger, tmux_logger, monitor_logger
 from config_loader import load_config
 from tmux_manager import manage_sessions
@@ -24,7 +26,12 @@ def main():
 
     try:
         config = load_config('../config.env')
-        manage_sessions(config, args.mode, args.sessions, args.wait_time, args.retry_count)
+        
+        # Start the tmux sessions in a separate thread
+        tmux_thread = threading.Thread(target=manage_sessions, args=(config, args.mode, args.sessions, args.wait_time, args.retry_count))
+        tmux_thread.start()
+
+        # Start the log monitor immediately
         monitor_logs(args.sessions, config, True, args.auto_restart)
     except Exception as e:
         main_logger.error(f"An error occurred: {str(e)}", exc_info=True)
