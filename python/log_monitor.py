@@ -6,7 +6,7 @@ import logging
 from collections import defaultdict
 from tmux_manager import kill_session, start_session
 
-def monitor_logs(sessions, config, show_loading=False, auto_restart=False, max_init_time=30, productive_interval=30):
+def monitor_logs(sessions, config, show_loading=False, auto_restart=False, max_init_time=90, productive_interval=30):
     logging.info(f"Starting log monitor for {sessions} sessions")
     logs = {f'../worker{i}.log': {
         'last_heartbeat': 0,
@@ -16,7 +16,9 @@ def monitor_logs(sessions, config, show_loading=False, auto_restart=False, max_i
         'time_in_status': 0,
         'error': None,
         'start_time': None,
-        'critical_error': False
+        'critical_error': False,
+        'first_heartbeat': False,
+        'productive_since': 0
     } for i in range(1, sessions + 1)}
 
     worker_id = config.get('WORKER_ID')
@@ -39,6 +41,9 @@ def monitor_logs(sessions, config, show_loading=False, auto_restart=False, max_i
             logs[log_file]['error'] = None
             logs[log_file]['critical_error'] = False
             logs[log_file]['last_inference'] = 0
+            logs[log_file]['first_heartbeat'] = False
+            logs[log_file]['start_time'] = None
+            logs[log_file]['productive_since'] = 0
         except Exception as e:
             logging.error(f"Failed to restart session {session_name}: {str(e)}")
             logs[log_file]['status'] = 'error'
@@ -61,14 +66,19 @@ def monitor_logs(sessions, config, show_loading=False, auto_restart=False, max_i
                             for line in lines:
                                 if 'Heartbeat' in line:
                                     data['last_heartbeat'] = current_time
-                                    if data['status'] == 'initializing':
+                                    if not data['first_heartbeat']:
+                                        data['first_heartbeat'] = True
+                                        data['start_time'] = current_time
+                                    if data['status'] == 'initializing' and current_time - data['start_time'] >= 20:
                                         data['status'] = 'alive'
                                         data['time_in_status'] = elapsed_time
-                                        data['start_time'] = current_time
                                 elif 'Inference finished' in line or 'Inference started' in line:
                                     data['last_inference'] = current_time
-                                    data['status'] = 'productive'
-                                    data['time_in_status'] = elapsed_time
+                                    if data['status'] != 'initializing':
+                                        if data['status'] != 'productive':
+                                            data['productive_since'] = current_time
+                                        data['status'] = 'productive'
+                                        data['time_in_status'] = elapsed_time
                                 elif 'Initializing' in line:
                                     if data['status'] != 'initializing':
                                         data['status'] = 'initializing'
@@ -93,9 +103,11 @@ def monitor_logs(sessions, config, show_loading=False, auto_restart=False, max_i
                         if data['status'] == 'productive' and current_time - data['last_inference'] > productive_interval:
                             data['status'] = 'alive'
                             data['time_in_status'] = elapsed_time
-                        elif data['status'] == 'alive' and current_time - data['last_inference'] <= productive_interval:
+                            data['productive_since'] = 0
+                        elif data['status'] == 'alive' and current_time - data['last_inference'] <= productive_interval and data['start_time'] and current_time - data['start_time'] >= 20:
                             data['status'] = 'productive'
                             data['time_in_status'] = elapsed_time
+                            data['productive_since'] = current_time
 
                     except IOError as e:
                         logging.error(f"Error reading log file {log_file}: {str(e)}")
@@ -111,8 +123,12 @@ def monitor_logs(sessions, config, show_loading=False, auto_restart=False, max_i
             print(f"Log Monitor - Elapsed Time: {int(elapsed_time)} seconds")
             print("-" * 50)
             for log_file, data in logs.items():
-                time_in_status = int(elapsed_time - data['time_in_status'])
-                status_line = f"{os.path.basename(log_file)}: {data['status']} for {time_in_status} seconds"
+                if data['status'] == 'productive':
+                    productive_time = int(current_time - data['productive_since'])
+                    status_line = f"{os.path.basename(log_file)}: {data['status']} for {productive_time} seconds"
+                else:
+                    time_in_status = int(elapsed_time - data['time_in_status'])
+                    status_line = f"{os.path.basename(log_file)}: {data['status']} for {time_in_status} seconds"
                 if data['error']:
                     status_line += f" - Error: {data['error']}"
                 print(status_line)
