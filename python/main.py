@@ -1,3 +1,5 @@
+# File: main.py
+
 import argparse
 from logger import main_logger as logger
 from config_loader import load_config
