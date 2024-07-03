@@ -61,4 +61,4 @@ def manage_sessions(config, mode='fresh', sessions=5, wait_time=5, retry_count=3
                 if attempt == retry_count:
                     logger.error(f"Failed to start tmux session {session_name} after {retry_count} attempts")
 
-    logger.info("Finished managing sessions")
+    logger.info("Finished managing sessions")  # Keep this INFO level log

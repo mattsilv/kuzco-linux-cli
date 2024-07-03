@@ -2,8 +2,7 @@
 
 import argparse
 import logging
-import threading
-from logger import main_logger as logger
+from logger import main_logger, config_logger, tmux_logger, monitor_logger
 from config_loader import load_config
 from tmux_manager import manage_sessions
 from log_monitor import monitor_logs
@@ -19,23 +18,16 @@ def main():
 
     args = parser.parse_args()
 
-    if args.verbose:
-        logger.setLevel(logging.DEBUG)
-    else:
-        logger.setLevel(logging.WARNING)  # Set to WARNING to suppress INFO logs
+    log_level = logging.DEBUG if args.verbose else logging.WARNING
+    for logger in [main_logger, config_logger, tmux_logger, monitor_logger]:
+        logger.setLevel(log_level)
 
     try:
         config = load_config('../config.env')
-
-        # Start the tmux sessions in a separate thread
-        tmux_thread = threading.Thread(target=manage_sessions, args=(config, args.mode, args.sessions, args.wait_time, args.retry_count))
-        tmux_thread.start()
-
-        # Start the log monitor immediately in the main thread
+        manage_sessions(config, args.mode, args.sessions, args.wait_time, args.retry_count)
         monitor_logs(args.sessions, config, True, args.auto_restart)
-
     except Exception as e:
-        logger.error(f"An error occurred: {str(e)}", exc_info=True)
+        main_logger.error(f"An error occurred: {str(e)}", exc_info=True)
 
 if __name__ == "__main__":
     main()
