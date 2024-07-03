@@ -1,36 +1,38 @@
-# Tmux Kuzco Worker Script
+# Kuzco Python Worker Manager
 
-This script manages tmux sessions for running Kuzco workers. It allows for starting, stopping, and adding worker sessions easily through a command-line interface.
+This Python script manages Kuzco workers using tmux sessions. It provides functionality for starting, monitoring, and managing multiple worker instances through a command-line interface.
 
 ## Features
 
-- Starts tmux sessions with specified commands
+- Starts and manages multiple Kuzco workers in tmux sessions
 - Supports two modes: fresh start and adding sessions
 - Reads worker configuration from a local config file or environment variables
-- Allows specifying the number of tmux sessions to start via a command-line flag
+- Monitors worker health and automatically restarts unresponsive workers
+- Provides real-time status updates for all worker instances
 
 ## Requirements
 
+- Python 3.6+
 - `tmux` must be installed on your system
+- Required Python packages: `subprocess`, `argparse`, `logging`
 
-## Usage
+## Installation
 
-### 1. Set Up Configuration
+1. Clone the repository:
 
-Clone this repo
+   ```bash
+   git clone https://github.com/mattsilv/kuzco-linux-cli.git
+   cd kuzco-linux-cli/python
+   ```
 
-```bash
-git clone https://github.com/mattsilv/kuzco-linux-cli.git .
-```
+2. Install required Python packages:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-Create a `config.env` file in the same directory as the script. This file should contain your worker ID and code. Here's an example:
+## Configuration
 
-```bash
-cd kuzco-linux-cli
-nano config.env
-```
-
-Paste in the contents below with your worker and code populated. hit CTRL-X, then Y, then ENTER to save the file in the nano editor.
+Create a `config.env` file in the parent directory of the script. This file should contain your worker ID and code:
 
 ```bash
 # config.env
@@ -38,45 +40,69 @@ WORKER_ID=your_worker_id
 CODE=your_code
 ```
 
-Alternatively, you can set the `WORKER_ID` and `CODE` as environment variables.
+Alternatively, you can set the `WORKER_ID` and `CODE` as environment variables:
 
 ```bash
-# If env variables are defined, script will ignore the config.env file.
 export WORKER_ID="your_worker_id"
 export CODE="your_code"
 ```
 
-### 2. Run the Script
+## Usage
 
-The script can be executed with different flags to control its behavior:
+Run the script using Python with various command-line arguments:
 
-- `-m [fresh|add]`: Mode of operation. Use `fresh` to kill all existing tmux sessions and start new ones. Use `add` to detect running tmux sessions and add new ones.
-- `-s [number]`: Number of tmux sessions to start.
+```bash
+python main.py [-h] [-m {fresh,add}] [-s SESSIONS] [-w WAIT_TIME] [-r RETRY_COUNT] [-v]
+```
+
+Arguments:
+
+- `-m, --mode {fresh,add}`: Mode of operation (default: fresh)
+- `-s, --sessions SESSIONS`: Number of tmux sessions to start (default: 5)
+- `-w, --wait_time WAIT_TIME`: Wait time between starting sessions (default: 5)
+- `-r, --retry_count RETRY_COUNT`: Number of retries for starting a session (default: 3)
+- `-v, --verbose`: Enable verbose logging
 
 Example usage:
 
 ```bash
+# Start 10 fresh tmux sessions with verbose logging
+python main.py -m fresh -s 10 -v
 
-# Start 12 fresh tmux sessions
-bash start.sh -m fresh -s 12
-
-# Add 5 tmux sessions to the existing ones
-bash start.sh -m add -s 5
+# Add 3 tmux sessions to existing ones
+python main.py -m add -s 3
 ```
 
-## Script Details
+## Components
 
-Here's a brief overview of what the script does:
+1. `main.py`: The entry point of the application. It parses command-line arguments and initializes the worker management process.
+2. `config_loader.py`: Handles loading of configuration from the `config.env` file or environment variables.
+3. `tmux_manager.py`: Manages tmux sessions, including starting, stopping, and checking the status of sessions.
+4. `log_monitor.py`: Monitors worker logs, updates worker statuses, and handles automatic restarts of unresponsive workers.
+5. `logger.py`: Sets up logging for different components of the application.
 
-1. **Configuration Loading**: Checks for a `config.env` file. If found, it loads the worker ID and code from this file. If not found, it looks for these values in the environment variables.
-2. **Command Definition**: Defines the command to start a Kuzco worker using the loaded configuration.
-3. **Mode Handling**: Depending on the `-m` flag, the script will either kill all existing tmux sessions (`fresh` mode) or add to the existing sessions (`add` mode).
-4. **Session Management**: Starts the specified number of tmux sessions using the defined command.
+## Worker Statuses
+
+The log monitor tracks the following statuses for each worker:
+
+- `initializing`: The worker is starting up.
+- `productive`: The worker has successfully run an inference in the last 30 seconds.
+- `alive`: The worker is running but hasn't performed an inference in the last 30 seconds.
+- `problem`: The worker is unresponsive or has encountered an issue.
+
+## Troubleshooting
+
+If workers are not starting or are frequently restarting, check the following:
+
+1. Ensure your `WORKER_ID` and `CODE` are correct in the `config.env` file or environment variables.
+2. Check the worker log files (located in the parent directory) for any error messages.
+3. Verify that you have sufficient system resources to run the requested number of workers.
+4. Ensure that the Kuzco CLI tool is properly installed and accessible in your system path.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
 This project is open source and available under the [MIT License](LICENSE).
-
-## Contributions
-
-Contributions are welcome! Please open an issue or submit a pull request on GitHub.
