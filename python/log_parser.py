@@ -2,7 +2,7 @@
 
 import time
 
-def parse_log(worker, log_lines, current_time):
+def parse_log(worker, log_lines, current_time, productive_interval=30):
     for line in log_lines:
         if 'Heartbeat' in line:
             worker.last_heartbeat = current_time
@@ -29,5 +29,5 @@ def parse_log(worker, log_lines, current_time):
             worker.update_status('error', current_time)
 
     # Update status based on last inference time
-    if worker.status == 'productive' and current_time - worker.last_productive > 30:  # 30 seconds threshold
+    if worker.status == 'productive' and current_time - worker.last_productive > productive_interval:
         worker.update_status('unproductive', current_time)
