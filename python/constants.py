@@ -4,6 +4,7 @@ from enum import Enum
 
 class WorkerStatus(Enum):
     STARTING = 'starting'
+    CONNECTING = 'connecting'  # New status
     INITIALIZING = 'initializing'
     PRODUCTIVE = 'productive'
     UNPRODUCTIVE = 'unproductive'

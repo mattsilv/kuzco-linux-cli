@@ -9,7 +9,9 @@ def parse_log(worker, log_lines, current_time, productive_interval=PRODUCTIVE_IN
     was_productive = False
 
     for line in log_lines:
-        if 'Heartbeat' in line:
+        if 'Worker oRWGCwGKiMEK5fq9q2xEr connecting to NATS' in line:
+            worker.update_status(WorkerStatus.CONNECTING, current_time)
+        elif 'Heartbeat' in line:
             worker.last_heartbeat = current_time
             if not worker.first_heartbeat:
                 worker.first_heartbeat = True

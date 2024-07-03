@@ -14,7 +14,7 @@ def display_status(workers, elapsed_time):
         if worker.status == WorkerStatus.PRODUCTIVE:
             productive_time = int(current_time - worker.last_productive)
             status_line = f"{os.path.basename(log_file)}: {worker.status.value} as of {productive_time} seconds ago"
-        elif worker.status == WorkerStatus.STARTING:
+        elif worker.status in [WorkerStatus.STARTING, WorkerStatus.CONNECTING]:
             status_line = f"{os.path.basename(log_file)}: {worker.status.value}"
         else:
             time_in_status = int(worker.get_time_in_status(current_time))
