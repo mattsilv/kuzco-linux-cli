@@ -38,13 +38,14 @@ def monitor_logs(sessions, config, max_init_time=30, productive_interval=30):
                             for line in lines:
                                 if 'Heartbeat' in line:
                                     data['last_heartbeat'] = current_time
-                                    if data['status'] != 'alive':
+                                    if data['status'] == 'initializing':
                                         data['status'] = 'alive'
                                         data['time_in_status'] = elapsed_time
                                 elif 'Inference finished' in line or 'Inference started' in line:
                                     data['last_inference'] = current_time
-                                    data['status'] = 'productive'
-                                    data['time_in_status'] = elapsed_time
+                                    if data['status'] != 'productive':
+                                        data['status'] = 'productive'
+                                        data['time_in_status'] = elapsed_time
                                 elif 'Initializing' in line:
                                     if data['status'] != 'initializing':
                                         data['status'] = 'initializing'
@@ -74,6 +75,9 @@ def monitor_logs(sessions, config, max_init_time=30, productive_interval=30):
                         # Update status based on last inference time
                         if data['status'] == 'productive' and current_time - data['last_inference'] > productive_interval:
                             data['status'] = 'alive'
+                            data['time_in_status'] = elapsed_time
+                        elif data['status'] == 'alive' and current_time - data['last_inference'] <= productive_interval:
+                            data['status'] = 'productive'
                             data['time_in_status'] = elapsed_time
 
                     except IOError as e:
