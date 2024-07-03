@@ -6,15 +6,16 @@ import logging
 from collections import defaultdict
 from tmux_manager import kill_session, start_session
 
-def monitor_logs(sessions, config, show_loading=False, max_init_time=30, productive_interval=30):
+def monitor_logs(sessions, config, show_loading=False, auto_restart=False, max_init_time=30, productive_interval=30):
     logging.info(f"Starting log monitor for {sessions} sessions")
     logs = {f'../worker{i}.log': {
         'last_heartbeat': 0,
         'last_inference': 0,
-        'last_init': time.time(),  # Initialize this to current time
+        'last_init': time.time(),
         'status': 'loading' if show_loading else 'initializing',
         'time_in_status': 0,
-        'error': None
+        'error': None,
+        'start_time': None
     } for i in range(1, sessions + 1)}
 
     worker_id = config.get('WORKER_ID')
@@ -45,9 +46,10 @@ def monitor_logs(sessions, config, show_loading=False, max_init_time=30, product
                                     if data['status'] == 'initializing':
                                         data['status'] = 'alive'
                                         data['time_in_status'] = elapsed_time
+                                        data['start_time'] = current_time
                                 elif 'Inference finished' in line or 'Inference started' in line:
                                     data['last_inference'] = current_time
-                                    if data['status'] != 'productive':
+                                    if data['status'] != 'productive' and data['start_time'] and current_time - data['start_time'] >= 25:
                                         data['status'] = 'productive'
                                         data['time_in_status'] = elapsed_time
                                 elif 'Initializing' in line:
@@ -61,7 +63,7 @@ def monitor_logs(sessions, config, show_loading=False, max_init_time=30, product
                                     data['time_in_status'] = elapsed_time
 
                         # Check if initialization is taking too long
-                        if data['status'] == 'initializing' and current_time - data['last_init'] > max_init_time:
+                        if auto_restart and data['status'] == 'initializing' and current_time - data['last_init'] > max_init_time:
                             logging.warning(f"{log_file}: Initialization taking too long. Restarting session.")
                             session_name = f"worker{log_file.split('worker')[1].split('.')[0]}"
                             kill_session(session_name)
@@ -80,7 +82,7 @@ def monitor_logs(sessions, config, show_loading=False, max_init_time=30, product
                         if data['status'] == 'productive' and current_time - data['last_inference'] > productive_interval:
                             data['status'] = 'alive'
                             data['time_in_status'] = elapsed_time
-                        elif data['status'] == 'alive' and current_time - data['last_inference'] <= productive_interval:
+                        elif data['status'] == 'alive' and current_time - data['last_inference'] <= productive_interval and data['start_time'] and current_time - data['start_time'] >= 25:
                             data['status'] = 'productive'
                             data['time_in_status'] = elapsed_time
 
@@ -90,8 +92,8 @@ def monitor_logs(sessions, config, show_loading=False, max_init_time=30, product
                     if data['status'] != 'loading':
                         logging.warning(f"Log file not found: {log_file}")
                     
-                    # If the worker has been in 'loading' state for too long, try to restart it
-                    if current_time - data['last_init'] > max_init_time:
+                    # If auto-restart is enabled and the worker has been in 'loading' state for too long, try to restart it
+                    if auto_restart and current_time - data['last_init'] > max_init_time:
                         logging.warning(f"{log_file}: Worker stuck in loading state. Attempting to start session.")
                         session_name = f"worker{log_file.split('worker')[1].split('.')[0]}"
                         try:
@@ -126,4 +128,4 @@ def monitor_logs(sessions, config, show_loading=False, max_init_time=30, product
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     # Note: You would need to pass the config when calling this function
-    # monitor_logs(5, config, True)  # Monitor 5 sessions by default, show loading state
+    # monitor_logs(5, config, True, False)  # Monitor 5 sessions by default, show loading state, auto-restart disabled

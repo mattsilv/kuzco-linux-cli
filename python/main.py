@@ -15,6 +15,7 @@ def main():
     parser.add_argument('-w', '--wait_time', type=int, default=5, help='Wait time between starting sessions')
     parser.add_argument('-r', '--retry_count', type=int, default=3, help='Number of retries for starting a session')
     parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose logging')
+    parser.add_argument('--auto-restart', action='store_true', help='Enable auto-restart for stuck workers')
 
     args = parser.parse_args()
 
@@ -29,7 +30,7 @@ def main():
         logger.debug(f"Loaded configuration: {config}")
 
         # Start the log monitor in a separate thread
-        monitor_thread = threading.Thread(target=monitor_logs, args=(args.sessions, config, True))
+        monitor_thread = threading.Thread(target=monitor_logs, args=(args.sessions, config, True, args.auto_restart))
         monitor_thread.start()
 
         # Manage sessions in the main thread
