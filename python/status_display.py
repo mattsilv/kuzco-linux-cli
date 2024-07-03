@@ -2,6 +2,7 @@
 
 import os
 import time
+import sys
 from constants import WorkerStatus, ERROR_DISPLAY_TIME
 
 def display_status(workers, elapsed_time):
@@ -26,3 +27,5 @@ def display_status(workers, elapsed_time):
             status_line += f" - Error: {worker.error}"
         
         print(status_line)
+    
+    sys.stdout.flush()

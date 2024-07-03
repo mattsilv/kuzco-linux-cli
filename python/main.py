@@ -30,25 +30,24 @@ def main():
 
     args = parser.parse_args()
 
-    log_level = logging.DEBUG if args.verbose else logging.WARNING
+    log_level = logging.DEBUG if args.verbose else logging.INFO
     for logger in [main_logger, config_logger, tmux_logger, monitor_logger]:
         logger.setLevel(log_level)
 
     try:
+        main_logger.info("Loading configuration...")
         config = load_config('../config.env')
         
-        # Clear log files and states
+        main_logger.info("Clearing log files and states...")
         clear_log_files(args.sessions)
         clear_all_states(args.sessions)
 
-        # Start the tmux sessions in a separate thread
+        main_logger.info("Starting tmux sessions...")
         tmux_thread = threading.Thread(target=manage_sessions, args=(config, args.mode, args.sessions, args.wait_time, args.retry_count))
         tmux_thread.start()
 
-        # Add a delay to allow tmux sessions to start
-        time.sleep(args.wait_time * args.sessions)
-
-        # Start the log monitor
+        # Start the log monitor immediately
+        main_logger.info("Starting log monitor...")
         monitor_logs(args.sessions, config, True, args.auto_restart)
     except Exception as e:
         main_logger.error(f"An error occurred: {str(e)}", exc_info=True)

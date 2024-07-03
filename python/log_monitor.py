@@ -2,6 +2,7 @@
 
 import os
 import time
+import threading
 from worker_state import Worker
 from log_parser import parse_log
 from status_display import display_status
@@ -45,7 +46,7 @@ def monitor_logs(sessions, config, show_loading=False, auto_restart=False, max_i
         if not os.path.exists(log_file) or os.path.getsize(log_file) == 0:
             logger.error(f"Worker {session_name} failed to create or write to its log file after restart")
 
-    try:
+    def monitor_thread():
         while True:
             current_time = time.time()
             elapsed_time = current_time - start_time
@@ -71,6 +72,16 @@ def monitor_logs(sessions, config, show_loading=False, auto_restart=False, max_i
                     if auto_restart and worker.status == WorkerStatus.STARTING and current_time - worker.last_init > max_init_time:
                         restart_worker(log_file, "Worker stuck in starting state.")
 
+            time.sleep(1)
+
+    # Start the monitoring thread
+    threading.Thread(target=monitor_thread, daemon=True).start()
+
+    # Display status in the main thread
+    try:
+        while True:
+            current_time = time.time()
+            elapsed_time = current_time - start_time
             display_status(workers, elapsed_time)
             time.sleep(1)
     except KeyboardInterrupt:
