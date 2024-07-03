@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+import threading
 from logger import main_logger as logger
 from config_loader import load_config
 from tmux_manager import manage_sessions
@@ -27,8 +28,16 @@ def main():
         config = load_config('../config.env')
         logger.debug(f"Loaded configuration: {config}")
 
+        # Start the log monitor in a separate thread
+        monitor_thread = threading.Thread(target=monitor_logs, args=(args.sessions, config, True))
+        monitor_thread.start()
+
+        # Manage sessions in the main thread
         manage_sessions(config, args.mode, args.sessions, args.wait_time, args.retry_count)
-        monitor_logs(args.sessions, config)
+
+        # Wait for the monitor thread to finish (it won't unless there's an error or user interruption)
+        monitor_thread.join()
+
     except Exception as e:
         logger.error(f"An error occurred: {str(e)}", exc_info=True)
 

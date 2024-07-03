@@ -6,13 +6,13 @@ import logging
 from collections import defaultdict
 from tmux_manager import kill_session, start_session
 
-def monitor_logs(sessions, config, max_init_time=30, productive_interval=30):
+def monitor_logs(sessions, config, show_loading=False, max_init_time=30, productive_interval=30):
     logging.info(f"Starting log monitor for {sessions} sessions")
     logs = {f'../worker{i}.log': {
         'last_heartbeat': 0,
         'last_inference': 0,
         'last_init': 0,
-        'status': 'initializing',
+        'status': 'loading' if show_loading else 'initializing',
         'time_in_status': 0,
         'error': None
     } for i in range(1, sessions + 1)}
@@ -32,6 +32,9 @@ def monitor_logs(sessions, config, max_init_time=30, productive_interval=30):
 
             for log_file, data in logs.items():
                 if os.path.exists(log_file):
+                    if data['status'] == 'loading':
+                        data['status'] = 'initializing'
+                        data['time_in_status'] = elapsed_time
                     try:
                         with open(log_file, 'r') as f:
                             lines = f.readlines()
@@ -83,7 +86,8 @@ def monitor_logs(sessions, config, max_init_time=30, productive_interval=30):
                     except IOError as e:
                         logging.error(f"Error reading log file {log_file}: {str(e)}")
                 else:
-                    logging.warning(f"Log file not found: {log_file}")
+                    if data['status'] != 'loading':
+                        logging.warning(f"Log file not found: {log_file}")
 
             # Use ANSI escape codes to move cursor to top of screen and clear
             print("\033[H\033[J", end="")
@@ -106,4 +110,4 @@ def monitor_logs(sessions, config, max_init_time=30, productive_interval=30):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     # Note: You would need to pass the config when calling this function
-    # monitor_logs(5, config)  # Monitor 5 sessions by default
+    # monitor_logs(5, config, True)  # Monitor 5 sessions by default, show loading state
