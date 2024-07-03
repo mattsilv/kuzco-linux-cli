@@ -7,10 +7,11 @@ from log_parser import parse_log
 from status_display import display_status
 from tmux_manager import kill_session, start_session
 from logger import monitor_logger as logger
+from constants import WorkerStatus, MAX_INIT_TIME, PRODUCTIVE_INTERVAL
 
-def monitor_logs(sessions, config, show_loading=False, auto_restart=False, max_init_time=90, productive_interval=30):
+def monitor_logs(sessions, config, show_loading=False, auto_restart=False, max_init_time=MAX_INIT_TIME, productive_interval=PRODUCTIVE_INTERVAL):
     logger.info(f"Starting log monitor for {sessions} sessions")
-    workers = {f'../worker{i}.log': Worker(f'../worker{i}.log', show_loading) for i in range(1, sessions + 1)}
+    workers = {f'../worker{i}.log': Worker(f'../worker{i}.log') for i in range(1, sessions + 1)}
 
     worker_id = config.get('WORKER_ID')
     code = config.get('CODE')
@@ -29,7 +30,7 @@ def monitor_logs(sessions, config, show_loading=False, auto_restart=False, max_i
             workers[log_file].restart()
         except Exception as e:
             logger.error(f"Failed to restart session {session_name}: {str(e)}")
-            workers[log_file].status = 'error'
+            workers[log_file].status = WorkerStatus.ERROR
             workers[log_file].error = f"Restart failed: {str(e)}"
 
     try:
@@ -46,16 +47,16 @@ def monitor_logs(sessions, config, show_loading=False, auto_restart=False, max_i
 
                         if worker.critical_error:
                             restart_worker(log_file, "Critical error detected.")
-                        elif auto_restart and worker.status == 'initializing' and current_time - worker.last_init > max_init_time:
+                        elif auto_restart and worker.status == WorkerStatus.INITIALIZING and current_time - worker.last_init > max_init_time:
                             restart_worker(log_file, "Initialization taking too long.")
 
                     except IOError as e:
                         logger.error(f"Error reading log file {log_file}: {str(e)}")
                 else:
-                    if worker.status != 'starting':
+                    if worker.status != WorkerStatus.STARTING:
                         logger.warning(f"Log file not found: {log_file}")
                     
-                    if auto_restart and worker.status == 'starting' and current_time - worker.last_init > max_init_time:
+                    if auto_restart and worker.status == WorkerStatus.STARTING and current_time - worker.last_init > max_init_time:
                         restart_worker(log_file, "Worker stuck in starting state.")
 
             display_status(workers, elapsed_time)

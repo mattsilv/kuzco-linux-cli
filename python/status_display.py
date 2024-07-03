@@ -2,6 +2,7 @@
 
 import os
 import time
+from constants import WorkerStatus, ERROR_DISPLAY_TIME
 
 def display_status(workers, elapsed_time):
     print("\033[H\033[J", end="")  # Clear screen
@@ -9,22 +10,19 @@ def display_status(workers, elapsed_time):
     print("-" * 50)
     for log_file, worker in workers.items():
         current_time = time.time()
-        if worker.status == 'productive':
+        if worker.status == WorkerStatus.PRODUCTIVE:
             productive_time = int(current_time - worker.last_productive)
-            status_line = f"{os.path.basename(log_file)}: {worker.status} as of {productive_time} seconds ago"
-        elif worker.status == 'initializing':
-            init_time = int(current_time - worker.last_init)
-            status_line = f"{os.path.basename(log_file)}: {worker.status} for {init_time} seconds"
-            if worker.restart_count > 0:
-                status_line += f" (restart #{worker.restart_count})"
-        elif worker.status == 'starting':
-            status_line = f"{os.path.basename(log_file)}: {worker.status}"
-        elif worker.status == 'error':
-            error_time = int(current_time - worker.error_time)
-            status_line = f"{os.path.basename(log_file)}: {worker.status} for {error_time} seconds"
+            status_line = f"{os.path.basename(log_file)}: {worker.status.value} as of {productive_time} seconds ago"
+        elif worker.status == WorkerStatus.STARTING:
+            status_line = f"{os.path.basename(log_file)}: {worker.status.value}"
         else:
-            time_in_status = int(worker.time_in_status)
-            status_line = f"{os.path.basename(log_file)}: {worker.status} for {time_in_status} seconds"
-        if worker.error and current_time - worker.error_time <= 5:
+            time_in_status = int(worker.get_time_in_status(current_time))
+            status_line = f"{os.path.basename(log_file)}: {worker.status.value} for {time_in_status} seconds"
+        
+        if worker.restart_count > 0:
+            status_line += f" (restart #{worker.restart_count})"
+        
+        if worker.error and current_time - worker.error_time <= ERROR_DISPLAY_TIME:
             status_line += f" - Error: {worker.error}"
+        
         print(status_line)

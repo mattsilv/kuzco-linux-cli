@@ -1,45 +1,50 @@
 # File: worker_state.py
 
 import time
+from typing import Optional
+from constants import WorkerStatus
 
 class Worker:
-    def __init__(self, log_file, show_loading=False):
-        self.log_file = log_file
-        self.last_heartbeat = 0
-        self.last_inference = 0
-        self.last_init = time.time()
-        self.status = 'starting'
-        self.time_in_status = 0
-        self.error = None
-        self.error_time = 0
-        self.start_time = None
-        self.critical_error = False
-        self.first_heartbeat = False
-        self.last_productive = 0
-        self.restart_count = 0
+    def __init__(self, log_file: str):
+        self.log_file: str = log_file
+        self.reset()
 
-    def restart(self):
-        self.last_init = time.time()
-        self.time_in_status = 0
-        self.status = 'starting'
-        self.error = None
-        self.error_time = 0
-        self.critical_error = False
-        self.last_inference = 0
-        self.first_heartbeat = False
-        self.start_time = None
-        self.last_productive = 0
+    def reset(self) -> None:
+        current_time = time.time()
+        self.last_heartbeat: float = current_time
+        self.last_inference: float = current_time
+        self.last_init: float = current_time
+        self.status: WorkerStatus = WorkerStatus.STARTING
+        self.time_in_status: float = 0
+        self.error: Optional[str] = None
+        self.error_time: float = 0
+        self.start_time: float = current_time
+        self.critical_error: bool = False
+        self.first_heartbeat: bool = False
+        self.last_productive: float = current_time
+        self.last_status_change: float = current_time
+        self.restart_count: int = 0
+
+    def restart(self) -> None:
+        self.reset()
         self.restart_count += 1
 
-    def update_status(self, new_status, current_time):
+    def update_status(self, new_status: WorkerStatus, current_time: float) -> None:
+        if self.status != new_status:
+            self.last_status_change = current_time
         self.status = new_status
-        self.time_in_status = current_time - self.last_init
-        if new_status != 'error':
+        if new_status == WorkerStatus.PRODUCTIVE:
+            self.last_productive = current_time
+        elif new_status == WorkerStatus.INITIALIZING:
+            self.last_init = current_time
+        if new_status != WorkerStatus.ERROR:
             self.error = None
             self.error_time = 0
 
-    def set_error(self, error_message, current_time):
+    def set_error(self, error_message: str, current_time: float) -> None:
         self.error = error_message
         self.error_time = current_time
-        self.status = 'error'
-        self.time_in_status = 0
+        self.update_status(WorkerStatus.ERROR, current_time)
+
+    def get_time_in_status(self, current_time: float) -> float:
+        return current_time - self.last_status_change
