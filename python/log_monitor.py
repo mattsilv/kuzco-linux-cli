@@ -11,7 +11,7 @@ def monitor_logs(sessions, config, show_loading=False, max_init_time=30, product
     logs = {f'../worker{i}.log': {
         'last_heartbeat': 0,
         'last_inference': 0,
-        'last_init': 0,
+        'last_init': time.time(),  # Initialize this to current time
         'status': 'loading' if show_loading else 'initializing',
         'time_in_status': 0,
         'error': None
@@ -35,6 +35,7 @@ def monitor_logs(sessions, config, show_loading=False, max_init_time=30, product
                     if data['status'] == 'loading':
                         data['status'] = 'initializing'
                         data['time_in_status'] = elapsed_time
+                        data['last_init'] = current_time
                     try:
                         with open(log_file, 'r') as f:
                             lines = f.readlines()
@@ -88,6 +89,21 @@ def monitor_logs(sessions, config, show_loading=False, max_init_time=30, product
                 else:
                     if data['status'] != 'loading':
                         logging.warning(f"Log file not found: {log_file}")
+                    
+                    # If the worker has been in 'loading' state for too long, try to restart it
+                    if current_time - data['last_init'] > max_init_time:
+                        logging.warning(f"{log_file}: Worker stuck in loading state. Attempting to start session.")
+                        session_name = f"worker{log_file.split('worker')[1].split('.')[0]}"
+                        try:
+                            start_session(session_name, worker_id, code, log_file)
+                            data['last_init'] = current_time
+                            data['time_in_status'] = elapsed_time
+                            data['status'] = 'initializing'
+                            data['error'] = None
+                        except Exception as e:
+                            logging.error(f"Failed to start session {session_name}: {str(e)}")
+                            data['status'] = 'error'
+                            data['error'] = f"Start failed: {str(e)}"
 
             # Use ANSI escape codes to move cursor to top of screen and clear
             print("\033[H\033[J", end="")
