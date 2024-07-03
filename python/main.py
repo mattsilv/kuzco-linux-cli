@@ -22,22 +22,17 @@ def main():
     if args.verbose:
         logger.setLevel(logging.DEBUG)
     else:
-        logger.setLevel(logging.INFO)
+        logger.setLevel(logging.WARNING)  # Set to WARNING to suppress INFO logs
 
     try:
-        logger.info(f"Starting Kuzco Tmux Worker Manager in {args.mode} mode")
         config = load_config('../config.env')
-        logger.debug(f"Loaded configuration: {config}")
 
-        # Start the log monitor in a separate thread
-        monitor_thread = threading.Thread(target=monitor_logs, args=(args.sessions, config, True, args.auto_restart))
-        monitor_thread.start()
+        # Start the tmux sessions in a separate thread
+        tmux_thread = threading.Thread(target=manage_sessions, args=(config, args.mode, args.sessions, args.wait_time, args.retry_count))
+        tmux_thread.start()
 
-        # Manage sessions in the main thread
-        manage_sessions(config, args.mode, args.sessions, args.wait_time, args.retry_count)
-
-        # Wait for the monitor thread to finish (it won't unless there's an error or user interruption)
-        monitor_thread.join()
+        # Start the log monitor immediately in the main thread
+        monitor_logs(args.sessions, config, True, args.auto_restart)
 
     except Exception as e:
         logger.error(f"An error occurred: {str(e)}", exc_info=True)
