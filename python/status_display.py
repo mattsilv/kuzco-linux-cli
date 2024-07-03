@@ -19,9 +19,12 @@ def display_status(workers, elapsed_time):
                 status_line += f" (restart #{worker.restart_count})"
         elif worker.status == 'starting':
             status_line = f"{os.path.basename(log_file)}: {worker.status}"
+        elif worker.status == 'error':
+            error_time = int(current_time - worker.error_time)
+            status_line = f"{os.path.basename(log_file)}: {worker.status} for {error_time} seconds"
         else:
             time_in_status = int(worker.time_in_status)
             status_line = f"{os.path.basename(log_file)}: {worker.status} for {time_in_status} seconds"
-        if worker.error:
+        if worker.error and current_time - worker.error_time <= 5:
             status_line += f" - Error: {worker.error}"
         print(status_line)
