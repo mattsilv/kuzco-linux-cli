@@ -45,12 +45,18 @@ def manage_sessions(config, mode='fresh', sessions=5, wait_time=5, retry_count=3
         try:
             result = subprocess.run(['tmux', 'list-sessions'], capture_output=True, text=True, check=True)
             for line in result.stdout.splitlines():
-                if 'worker' in line:
-                    session_name = line.split(':')[0]
+                session_name = line.split(':')[0]
+                try:
                     kill_session(session_name)
-            logger.info("Stopped all existing tmux sessions")
+                    logger.info(f"Stopped session: {session_name}")
+                except Exception as e:
+                    logger.error(f"Failed to stop session {session_name}: {str(e)}")
+            logger.info("Attempted to stop all existing tmux sessions")
         except subprocess.CalledProcessError as e:
-            logger.warning(f"Error listing tmux sessions: {e.stderr.strip()}")
+            if "no server running" in e.stderr.lower():
+                logger.info("No tmux server running. No sessions to stop.")
+            else:
+                logger.warning(f"Error listing tmux sessions: {e.stderr.strip()}")
         start_index = 1
     else:
         logger.info("Add mode: Starting from the next available worker number")
