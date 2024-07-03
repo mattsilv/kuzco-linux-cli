@@ -6,7 +6,7 @@ import logging
 from collections import defaultdict
 from tmux_manager import kill_session, start_session
 
-def monitor_logs(sessions, max_init_time=30, productive_interval=30):
+def monitor_logs(sessions, config, max_init_time=30, productive_interval=30):
     logging.info(f"Starting log monitor for {sessions} sessions")
     logs = {f'../worker{i}.log': {
         'last_heartbeat': 0,
@@ -16,6 +16,12 @@ def monitor_logs(sessions, max_init_time=30, productive_interval=30):
         'time_in_status': 0,
         'error': None
     } for i in range(1, sessions + 1)}
+
+    worker_id = config.get('WORKER_ID')
+    code = config.get('CODE')
+
+    if not worker_id or not code:
+        raise ValueError("WORKER_ID and CODE must be set in the configuration")
 
     start_time = time.time()
 
@@ -55,7 +61,7 @@ def monitor_logs(sessions, max_init_time=30, productive_interval=30):
                             session_name = f"worker{log_file.split('worker')[1].split('.')[0]}"
                             kill_session(session_name)
                             try:
-                                start_session(session_name, 'kuzco worker start', log_file)
+                                start_session(session_name, worker_id, code, log_file)
                                 data['last_init'] = current_time
                                 data['time_in_status'] = elapsed_time
                                 data['status'] = 'initializing'
@@ -95,4 +101,5 @@ def monitor_logs(sessions, max_init_time=30, productive_interval=30):
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-    monitor_logs(5)  # Monitor 5 sessions by default
+    # Note: You would need to pass the config when calling this function
+    # monitor_logs(5, config)  # Monitor 5 sessions by default
