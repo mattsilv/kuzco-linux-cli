@@ -38,6 +38,7 @@ def monitor_logs(sessions, config, show_loading=False, auto_restart=False, max_i
             logs[log_file]['status'] = 'initializing'
             logs[log_file]['error'] = None
             logs[log_file]['critical_error'] = False
+            logs[log_file]['last_inference'] = 0
         except Exception as e:
             logging.error(f"Failed to restart session {session_name}: {str(e)}")
             logs[log_file]['status'] = 'error'
@@ -66,9 +67,8 @@ def monitor_logs(sessions, config, show_loading=False, auto_restart=False, max_i
                                         data['start_time'] = current_time
                                 elif 'Inference finished' in line or 'Inference started' in line:
                                     data['last_inference'] = current_time
-                                    if data['status'] != 'productive' and data['start_time'] and current_time - data['start_time'] >= 25:
-                                        data['status'] = 'productive'
-                                        data['time_in_status'] = elapsed_time
+                                    data['status'] = 'productive'
+                                    data['time_in_status'] = elapsed_time
                                 elif 'Initializing' in line:
                                     if data['status'] != 'initializing':
                                         data['status'] = 'initializing'
@@ -93,7 +93,7 @@ def monitor_logs(sessions, config, show_loading=False, auto_restart=False, max_i
                         if data['status'] == 'productive' and current_time - data['last_inference'] > productive_interval:
                             data['status'] = 'alive'
                             data['time_in_status'] = elapsed_time
-                        elif data['status'] == 'alive' and current_time - data['last_inference'] <= productive_interval and data['start_time'] and current_time - data['start_time'] >= 25:
+                        elif data['status'] == 'alive' and current_time - data['last_inference'] <= productive_interval:
                             data['status'] = 'productive'
                             data['time_in_status'] = elapsed_time
 
@@ -103,7 +103,6 @@ def monitor_logs(sessions, config, show_loading=False, auto_restart=False, max_i
                     if data['status'] != 'loading':
                         logging.warning(f"Log file not found: {log_file}")
                     
-                    # If auto-restart is enabled and the worker has been in 'loading' state for too long, try to restart it
                     if auto_restart and current_time - data['last_init'] > max_init_time:
                         restart_worker(log_file, "Worker stuck in loading state.")
 
