@@ -7,7 +7,7 @@ This Python script manages Kuzco workers using tmux sessions. It provides functi
 - Starts and manages multiple Kuzco workers in tmux sessions
 - Supports two modes: fresh start and adding sessions
 - Reads worker configuration from a local config file or environment variables
-- Monitors worker health and automatically restarts unresponsive workers
+- Monitors worker health and optionally auto-restarts unresponsive workers
 - Provides real-time status updates for all worker instances
 
 ## Requirements
@@ -52,7 +52,7 @@ export CODE="your_code"
 Run the script using Python with various command-line arguments:
 
 ```bash
-python main.py [-h] [-m {fresh,add}] [-s SESSIONS] [-w WAIT_TIME] [-r RETRY_COUNT] [-v]
+python main.py [-h] [-m {fresh,add}] [-s SESSIONS] [-w WAIT_TIME] [-r RETRY_COUNT] [-v] [--auto-restart]
 ```
 
 Arguments:
@@ -62,14 +62,15 @@ Arguments:
 - `-w, --wait_time WAIT_TIME`: Wait time between starting sessions (default: 5)
 - `-r, --retry_count RETRY_COUNT`: Number of retries for starting a session (default: 3)
 - `-v, --verbose`: Enable verbose logging
+- `--auto-restart`: Enable automatic restart of unresponsive workers
 
 Example usage:
 
 ```bash
-# Start 10 fresh tmux sessions with verbose logging
-python main.py -m fresh -s 10 -v
+# Start 10 fresh tmux sessions with verbose logging and auto-restart
+python main.py -m fresh -s 10 -v --auto-restart
 
-# Add 3 tmux sessions to existing ones
+# Add 3 tmux sessions to existing ones without auto-restart
 python main.py -m add -s 3
 ```
 
@@ -78,7 +79,7 @@ python main.py -m add -s 3
 1. `main.py`: The entry point of the application. It parses command-line arguments and initializes the worker management process.
 2. `config_loader.py`: Handles loading of configuration from the `config.env` file or environment variables.
 3. `tmux_manager.py`: Manages tmux sessions, including starting, stopping, and checking the status of sessions.
-4. `log_monitor.py`: Monitors worker logs, updates worker statuses, and handles automatic restarts of unresponsive workers.
+4. `log_monitor.py`: Monitors worker logs, updates worker statuses, and handles automatic restarts of unresponsive workers when enabled.
 5. `logger.py`: Sets up logging for different components of the application.
 
 ## Worker Statuses
@@ -90,6 +91,15 @@ The log monitor tracks the following statuses for each worker:
 - `alive`: The worker is running but hasn't performed an inference in the last 30 seconds.
 - `problem`: The worker is unresponsive or has encountered an issue.
 
+## Auto-restart Feature
+
+When the `--auto-restart` flag is used, the script will automatically attempt to restart workers that are:
+
+1. Stuck in the initializing state for more than 30 seconds.
+2. Encountering critical errors (e.g., SyntaxError, failure to handle inference subscription).
+
+This feature helps maintain the health and productivity of your worker pool without manual intervention.
+
 ## Troubleshooting
 
 If workers are not starting or are frequently restarting, check the following:
@@ -98,6 +108,7 @@ If workers are not starting or are frequently restarting, check the following:
 2. Check the worker log files (located in the parent directory) for any error messages.
 3. Verify that you have sufficient system resources to run the requested number of workers.
 4. Ensure that the Kuzco CLI tool is properly installed and accessible in your system path.
+5. If using auto-restart, monitor the logs to see if workers are being restarted frequently, which might indicate a persistent issue.
 
 ## Contributing
 
