@@ -21,6 +21,12 @@ def monitor_logs(sessions, config, show_loading=False, auto_restart=False, max_i
 
     start_time = time.time()
 
+    # Reset all workers to starting state
+    current_time = time.time()
+    for worker in workers.values():
+        worker.reset()
+        worker.update_status(WorkerStatus.STARTING, current_time)
+
     def restart_worker(log_file, reason):
         session_name = f"worker{log_file.split('worker')[1].split('.')[0]}"
         logger.warning(f"{log_file}: {reason} Restarting session.")
@@ -28,10 +34,16 @@ def monitor_logs(sessions, config, show_loading=False, auto_restart=False, max_i
         try:
             start_session(session_name, worker_id, code, log_file)
             workers[log_file].restart()
+            logger.info(f"Successfully restarted worker {session_name}")
         except Exception as e:
-            logger.error(f"Failed to restart session {session_name}: {str(e)}")
+            logger.error(f"Failed to restart session {session_name}: {str(e)}", exc_info=True)
             workers[log_file].status = WorkerStatus.ERROR
             workers[log_file].error = f"Restart failed: {str(e)}"
+        
+        # Check if the worker started successfully
+        time.sleep(5)  # Wait a bit for the worker to start
+        if not os.path.exists(log_file) or os.path.getsize(log_file) == 0:
+            logger.error(f"Worker {session_name} failed to create or write to its log file after restart")
 
     try:
         while True:

@@ -4,10 +4,20 @@ import argparse
 import logging
 import threading
 import time
+import os
 from logger import main_logger, config_logger, tmux_logger, monitor_logger
 from config_loader import load_config
 from tmux_manager import manage_sessions
 from log_monitor import monitor_logs
+from state_manager import clear_all_states
+
+def clear_log_files(sessions):
+    for i in range(1, sessions + 1):
+        log_file = f'../worker{i}.log'
+        if os.path.exists(log_file):
+            with open(log_file, 'w') as f:
+                f.write('')  # Clear the file
+            print(f"Cleared {log_file}")
 
 def main():
     parser = argparse.ArgumentParser(description='Kuzco Tmux Worker Manager')
@@ -27,11 +37,18 @@ def main():
     try:
         config = load_config('../config.env')
         
+        # Clear log files and states
+        clear_log_files(args.sessions)
+        clear_all_states(args.sessions)
+
         # Start the tmux sessions in a separate thread
         tmux_thread = threading.Thread(target=manage_sessions, args=(config, args.mode, args.sessions, args.wait_time, args.retry_count))
         tmux_thread.start()
 
-        # Start the log monitor immediately
+        # Add a delay to allow tmux sessions to start
+        time.sleep(args.wait_time * args.sessions)
+
+        # Start the log monitor
         monitor_logs(args.sessions, config, True, args.auto_restart)
     except Exception as e:
         main_logger.error(f"An error occurred: {str(e)}", exc_info=True)

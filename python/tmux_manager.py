@@ -4,6 +4,7 @@ import subprocess
 import time
 import os
 import logging
+import shutil
 from logger import tmux_logger as logger
 
 # Set the logger to a higher level to suppress most logs
@@ -20,12 +21,20 @@ def kill_session(session_name):
         logger.warning(f"Failed to kill session '{session_name}'")
 
 def start_session(session_name, worker_id, code, log_file):
+    # Check for available disk space
+    if shutil.disk_usage("/").free < 1024 * 1024 * 100:  # 100 MB
+        raise OSError("Insufficient disk space")
+
+    # Check for write permissions
+    if not os.access(os.path.dirname(log_file), os.W_OK):
+        raise PermissionError(f"No write permission for {os.path.dirname(log_file)}")
+
     command = f'kuzco worker start --worker {worker_id} --code {code}'
-    full_command = f'{command} > {log_file} 2>&1'
+    full_command = f'{command} >> {log_file} 2>&1'
     try:
         subprocess.run(['tmux', 'new-session', '-d', '-s', session_name, 'bash', '-c', full_command], check=True, capture_output=True)
-    except subprocess.CalledProcessError:
-        logger.warning(f"Failed to start session '{session_name}'")
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Failed to start session '{session_name}': {e.stderr.decode().strip()}")
         raise
 
 def manage_sessions(config, mode='fresh', sessions=5, wait_time=5, retry_count=3):

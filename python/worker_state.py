@@ -3,11 +3,26 @@
 import time
 from typing import Optional
 from constants import WorkerStatus
+from state_manager import save_worker_state, load_worker_state
 
 class Worker:
     def __init__(self, log_file: str):
         self.log_file: str = log_file
-        self.reset()
+        self.worker_id = int(log_file.split('worker')[1].split('.')[0])
+        self.load_state()
+
+    def load_state(self):
+        state = load_worker_state(self.worker_id)
+        if state:
+            self.status = WorkerStatus(state['status'])
+            self.last_productive = state['last_productive']
+            self.error = state['error']
+            self.restart_count = state['restart_count']
+        else:
+            self.reset()
+
+    def save_state(self):
+        save_worker_state(self.worker_id, self)
 
     def reset(self) -> None:
         current_time = time.time()
@@ -24,10 +39,12 @@ class Worker:
         self.last_productive: float = current_time
         self.last_status_change: float = current_time
         self.restart_count: int = 0
+        self.save_state()
 
     def restart(self) -> None:
         self.reset()
         self.restart_count += 1
+        self.save_state()
 
     def update_status(self, new_status: WorkerStatus, current_time: float) -> None:
         if self.status != new_status:
@@ -40,6 +57,7 @@ class Worker:
         if new_status != WorkerStatus.ERROR:
             self.error = None
             self.error_time = 0
+        self.save_state()
 
     def set_error(self, error_message: str, current_time: float) -> None:
         self.error = error_message
