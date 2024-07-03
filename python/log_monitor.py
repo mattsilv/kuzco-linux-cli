@@ -15,7 +15,8 @@ def monitor_logs(sessions, config, show_loading=False, auto_restart=False, max_i
         'status': 'loading' if show_loading else 'initializing',
         'time_in_status': 0,
         'error': None,
-        'start_time': None
+        'start_time': None,
+        'critical_error': False
     } for i in range(1, sessions + 1)}
 
     worker_id = config.get('WORKER_ID')
@@ -25,6 +26,22 @@ def monitor_logs(sessions, config, show_loading=False, auto_restart=False, max_i
         raise ValueError("WORKER_ID and CODE must be set in the configuration")
 
     start_time = time.time()
+
+    def restart_worker(log_file, reason):
+        session_name = f"worker{log_file.split('worker')[1].split('.')[0]}"
+        logging.warning(f"{log_file}: {reason} Restarting session.")
+        kill_session(session_name)
+        try:
+            start_session(session_name, worker_id, code, log_file)
+            logs[log_file]['last_init'] = time.time()
+            logs[log_file]['time_in_status'] = 0
+            logs[log_file]['status'] = 'initializing'
+            logs[log_file]['error'] = None
+            logs[log_file]['critical_error'] = False
+        except Exception as e:
+            logging.error(f"Failed to restart session {session_name}: {str(e)}")
+            logs[log_file]['status'] = 'error'
+            logs[log_file]['error'] = f"Restart failed: {str(e)}"
 
     try:
         while True:
@@ -57,26 +74,20 @@ def monitor_logs(sessions, config, show_loading=False, auto_restart=False, max_i
                                         data['status'] = 'initializing'
                                         data['last_init'] = current_time
                                         data['time_in_status'] = elapsed_time
+                                elif 'SyntaxError' in line or 'Failed to handle inference subscription' in line:
+                                    data['error'] = line.strip()
+                                    data['status'] = 'error'
+                                    data['time_in_status'] = elapsed_time
+                                    data['critical_error'] = True
                                 elif 'Error:' in line or 'Failed to' in line:
                                     data['error'] = line.strip()
                                     data['status'] = 'error'
                                     data['time_in_status'] = elapsed_time
 
-                        # Check if initialization is taking too long
-                        if auto_restart and data['status'] == 'initializing' and current_time - data['last_init'] > max_init_time:
-                            logging.warning(f"{log_file}: Initialization taking too long. Restarting session.")
-                            session_name = f"worker{log_file.split('worker')[1].split('.')[0]}"
-                            kill_session(session_name)
-                            try:
-                                start_session(session_name, worker_id, code, log_file)
-                                data['last_init'] = current_time
-                                data['time_in_status'] = elapsed_time
-                                data['status'] = 'initializing'
-                                data['error'] = None
-                            except Exception as e:
-                                logging.error(f"Failed to restart session {session_name}: {str(e)}")
-                                data['status'] = 'error'
-                                data['error'] = f"Restart failed: {str(e)}"
+                        if data['critical_error']:
+                            restart_worker(log_file, "Critical error detected.")
+                        elif auto_restart and data['status'] == 'initializing' and current_time - data['last_init'] > max_init_time:
+                            restart_worker(log_file, "Initialization taking too long.")
 
                         # Update status based on last inference time
                         if data['status'] == 'productive' and current_time - data['last_inference'] > productive_interval:
@@ -94,18 +105,7 @@ def monitor_logs(sessions, config, show_loading=False, auto_restart=False, max_i
                     
                     # If auto-restart is enabled and the worker has been in 'loading' state for too long, try to restart it
                     if auto_restart and current_time - data['last_init'] > max_init_time:
-                        logging.warning(f"{log_file}: Worker stuck in loading state. Attempting to start session.")
-                        session_name = f"worker{log_file.split('worker')[1].split('.')[0]}"
-                        try:
-                            start_session(session_name, worker_id, code, log_file)
-                            data['last_init'] = current_time
-                            data['time_in_status'] = elapsed_time
-                            data['status'] = 'initializing'
-                            data['error'] = None
-                        except Exception as e:
-                            logging.error(f"Failed to start session {session_name}: {str(e)}")
-                            data['status'] = 'error'
-                            data['error'] = f"Start failed: {str(e)}"
+                        restart_worker(log_file, "Worker stuck in loading state.")
 
             # Use ANSI escape codes to move cursor to top of screen and clear
             print("\033[H\033[J", end="")
