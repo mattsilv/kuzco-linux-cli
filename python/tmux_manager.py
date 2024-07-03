@@ -22,16 +22,11 @@ def kill_session(session_name):
 
 def start_session(session_name, worker_id, code, log_file):
     logger.info(f"Starting session '{session_name}'")
-    command = f'kuzco worker start --worker {worker_id} --code {code}'
+    command = f'WORKER_ID="{worker_id}" CODE="{code}" kuzco worker start --worker {worker_id} --code {code}'
     full_command = f'bash -c "{command} > {log_file} 2>&1"'
     
     try:
-        env = os.environ.copy()
-        env['WORKER_ID'] = worker_id
-        env['CODE'] = code
-        
-        subprocess.run(['tmux', 'new-session', '-d', '-s', session_name, full_command], 
-                       check=True, capture_output=True, env=env)
+        subprocess.run(['tmux', 'new-session', '-d', '-s', session_name, full_command], check=True, capture_output=True)
         logger.debug(f"Successfully started session '{session_name}'")
     except subprocess.CalledProcessError as e:
         logger.error(f"Failed to start session '{session_name}': {e.stderr.decode().strip()}")

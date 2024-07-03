@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+import traceback
 from logger import main_logger as logger
 from config_loader import load_config
 from tmux_manager import manage_sessions
@@ -28,9 +29,15 @@ def main():
         logger.debug(f"Loaded configuration: {config}")
 
         manage_sessions(config, args.mode, args.sessions, args.wait_time, args.retry_count)
-        monitor_logs(args.sessions)
+        
+        try:
+            monitor_logs(args.sessions)
+        except Exception as e:
+            logger.error(f"Error in monitor_logs: {str(e)}")
+            logger.error(traceback.format_exc())
     except Exception as e:
-        logger.error(f"An error occurred: {str(e)}", exc_info=True)
+        logger.error(f"An error occurred: {str(e)}")
+        logger.error(traceback.format_exc())
 
 if __name__ == "__main__":
     main()
