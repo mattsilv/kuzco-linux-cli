@@ -13,7 +13,8 @@ def monitor_logs(sessions, max_init_time=30, productive_interval=30):
         'last_inference': 0,
         'last_init': 0,
         'status': 'initializing',
-        'time_in_status': 0
+        'time_in_status': 0,
+        'error': None
     } for i in range(1, sessions + 1)}
 
     start_time = time.time()
@@ -43,15 +44,26 @@ def monitor_logs(sessions, max_init_time=30, productive_interval=30):
                                         data['status'] = 'initializing'
                                         data['last_init'] = current_time
                                         data['time_in_status'] = elapsed_time
+                                elif 'Error:' in line or 'Failed to' in line:
+                                    data['error'] = line.strip()
+                                    data['status'] = 'error'
+                                    data['time_in_status'] = elapsed_time
 
                         # Check if initialization is taking too long
                         if data['status'] == 'initializing' and current_time - data['last_init'] > max_init_time:
                             logging.warning(f"{log_file}: Initialization taking too long. Restarting session.")
                             session_name = f"worker{log_file.split('worker')[1].split('.')[0]}"
                             kill_session(session_name)
-                            start_session(session_name, f'kuzco worker start --worker $WORKER_ID --code $CODE', log_file)
-                            data['last_init'] = current_time
-                            data['time_in_status'] = elapsed_time
+                            try:
+                                start_session(session_name, 'kuzco worker start', log_file)
+                                data['last_init'] = current_time
+                                data['time_in_status'] = elapsed_time
+                                data['status'] = 'initializing'
+                                data['error'] = None
+                            except Exception as e:
+                                logging.error(f"Failed to restart session {session_name}: {str(e)}")
+                                data['status'] = 'error'
+                                data['error'] = f"Restart failed: {str(e)}"
 
                         # Update status based on last inference time
                         if data['status'] == 'productive' and current_time - data['last_inference'] > productive_interval:
@@ -69,7 +81,10 @@ def monitor_logs(sessions, max_init_time=30, productive_interval=30):
             print("-" * 50)
             for log_file, data in logs.items():
                 time_in_status = int(elapsed_time - data['time_in_status'])
-                print(f"{os.path.basename(log_file)}: {data['status']} for {time_in_status} seconds")
+                status_line = f"{os.path.basename(log_file)}: {data['status']} for {time_in_status} seconds"
+                if data['error']:
+                    status_line += f" - Error: {data['error']}"
+                print(status_line)
             
             time.sleep(1)
     except KeyboardInterrupt:

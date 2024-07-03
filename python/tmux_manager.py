@@ -20,25 +20,18 @@ def kill_session(session_name):
     except subprocess.CalledProcessError as e:
         logger.error(f"Failed to kill session '{session_name}': {e.stderr.decode().strip()}")
 
-def start_session(session_name, worker_id, code, log_file):
+def start_session(session_name, command, log_file):
     logger.info(f"Starting session '{session_name}'")
-    command = f'WORKER_ID="{worker_id}" CODE="{code}" kuzco worker start --worker {worker_id} --code {code}'
-    full_command = f'bash -c "{command} > {log_file} 2>&1"'
-    
+    full_command = f'{command} > {log_file} 2>&1'
     try:
-        subprocess.run(['tmux', 'new-session', '-d', '-s', session_name, full_command], check=True, capture_output=True)
+        subprocess.run(['tmux', 'new-session', '-d', '-s', session_name, 'bash', '-c', full_command], check=True, capture_output=True)
         logger.debug(f"Successfully started session '{session_name}'")
     except subprocess.CalledProcessError as e:
         logger.error(f"Failed to start session '{session_name}': {e.stderr.decode().strip()}")
         raise
 
 def manage_sessions(config, mode='fresh', sessions=5, wait_time=5, retry_count=3):
-    worker_id = config.get('WORKER_ID')
-    code = config.get('CODE')
-    
-    if not worker_id or not code:
-        raise ValueError("WORKER_ID and CODE must be set in the configuration")
-
+    worker_command = f'kuzco worker start'
     logger.info(f"Managing sessions: mode={mode}, sessions={sessions}, wait_time={wait_time}, retry_count={retry_count}")
 
     if mode == 'fresh':
@@ -66,7 +59,7 @@ def manage_sessions(config, mode='fresh', sessions=5, wait_time=5, retry_count=3
             if session_exists(session_name):
                 kill_session(session_name)
             try:
-                start_session(session_name, worker_id, code, log_file)
+                start_session(session_name, worker_command, log_file)
                 time.sleep(wait_time)
                 if session_exists(session_name):
                     success = True
